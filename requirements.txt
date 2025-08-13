@@ -1,4 +1,5 @@
 flask
+fastmcp
 flask_sqlalchemy
 sqlalchemy
 werkzeug
