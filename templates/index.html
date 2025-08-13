@@ -1,0 +1,539 @@
+{% extends "layout.html" %}
+
+{% block title %}Health Assistant - Your Personal Wellness Companion - By Ansh {% endblock %}
+
+{% block content %}
+
+<!-- Login Modal -->
+<div class="modal fade" id="loginModal" tabindex="-1" aria-labelledby="loginModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="loginModalLabel">
+                    <i class="fas fa-sign-in-alt me-2"></i>Welcome to Health Assistant
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted">Enter your phone number to start tracking your health journey.</p>
+                <form id="loginForm">
+                    <div class="mb-3">
+                        <label for="phoneNumber" class="form-label">Phone Number</label>
+                        <div class="input-group">
+                            <span class="input-group-text">+</span>
+                            <input type="tel" class="form-control" id="phoneNumber" placeholder="919876543210" required>
+                        </div>
+                        <div class="form-text">Format: Country code + number (e.g., +91987654....)</div>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-sign-in-alt me-2"></i>Get Started
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MCP Integration Info Banner -->
+<div class="alert alert-info alert-dismissible fade show" role="alert">
+    <div class="d-flex align-items-center">
+        <i class="fas fa-robot me-3 fs-4"></i>
+        <div>
+            <h6 class="alert-heading mb-1">🚀 Puch AI Integration Ready!</h6>
+            <p class="mb-0">
+                Connect this app to <strong>Puch AI</strong> via WhatsApp for AI-powered health assistance. 
+                Use MCP command: <code>/mcp connect https://your-server.com/mcp your-token</code>
+            </p>
+        </div>
+    </div>
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+
+<!-- Welcome Hero Section -->
+<section id="hero" class="hero-section mb-5">
+    <div class="row align-items-center">
+        <div class="col-lg-6">
+            <h1 class="display-4 fw-bold text-primary mb-3">
+                <i class="fas fa-heartbeat me-3"></i>Health Assistant
+            </h1>
+            <p class="lead mb-4">
+                Your personal wellness companion powered by AI. Track your BMI, water intake, steps, 
+                and get intelligent health recommendations through Puch AI integration.
+            </p>
+            <div class="d-grid gap-2 d-md-flex">
+                <button class="btn btn-primary btn-lg" onclick="showLogin()">
+                    <i class="fas fa-play me-2"></i>Get Started
+                </button>
+                <button class="btn btn-outline-primary btn-lg" onclick="showMCPInfo()">
+                    <i class="fas fa-info-circle me-2"></i>MCP Integration
+                </button>
+            </div>
+        </div>
+        <div class="col-lg-6 text-center">
+            <div class="health-hero-visual">
+                <i class="fas fa-mobile-alt text-primary" style="font-size: 8rem; opacity: 0.1;"></i>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Quick Stats Dashboard -->
+<section id="dashboard" class="mb-5">
+    <div class="row g-4">
+        <div class="col-md-3">
+            <div class="card stat-card h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-calculator text-primary mb-3" style="font-size: 2rem;"></i>
+                    <h5 class="card-title">BMI Calculator</h5>
+                    <p class="card-text text-muted">Calculate and track your Body Mass Index</p>
+                    <div id="bmi-preview" class="mt-3">
+                        <small class="text-muted">Enter your details to calculate</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-tint text-info mb-3" style="font-size: 2rem;"></i>
+                    <h5 class="card-title">Water Intake</h5>
+                    <p class="card-text text-muted">Track daily hydration</p>
+                    <div id="water-preview" class="mt-3">
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-info" role="progressbar" style="width: 0%"></div>
+                        </div>
+                        <small class="text-muted">0 / 2500 ml</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-walking text-success mb-3" style="font-size: 2rem;"></i>
+                    <h5 class="card-title">Step Counter</h5>
+                    <p class="card-text text-muted">Track daily activity</p>
+                    <div id="steps-preview" class="mt-3">
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-success" role="progressbar" style="width: 0%"></div>
+                        </div>
+                        <small class="text-muted">0 / 10000 steps</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-robot text-warning mb-3" style="font-size: 2rem;"></i>
+                    <h5 class="card-title">AI Assistant</h5>
+                    <p class="card-text text-muted">Get personalized tips</p>
+                    <div id="ai-preview" class="mt-3">
+                        <button class="btn btn-outline-warning btn-sm" onclick="generateTip()">
+                            <i class="fas fa-lightbulb me-1"></i>Get Tip
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- BMI Calculator Section -->
+<section id="bmi-calculator" class="mb-5">
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0">
+                <i class="fas fa-calculator me-2"></i>BMI Calculator
+            </h4>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-lg-6">
+                    <form id="bmiForm">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="height" class="form-label">Height (cm)</label>
+                                <input type="number" class="form-control" id="height" placeholder="170" min="50" max="300">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="weight" class="form-label">Weight (kg)</label>
+                                <input type="number" class="form-control" id="weight" placeholder="70" min="20" max="500" step="0.1">
+                            </div>
+                            <div class="col-12">
+                                <button type="submit" class="btn btn-primary w-100">
+                                    <i class="fas fa-calculator me-2"></i>Calculate BMI
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="col-lg-6">
+                    <div id="bmi-result" class="mt-3 mt-lg-0">
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Enter your height and weight to calculate your BMI and get personalized health recommendations.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Water Tracker Section -->
+<section id="water-tracker" class="mb-5">
+    <div class="card">
+        <div class="card-header bg-info text-white">
+            <h4 class="mb-0">
+                <i class="fas fa-tint me-2"></i>Water Intake Tracker
+            </h4>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-lg-6">
+                    <div class="text-center mb-4">
+                        <canvas id="waterChart" width="300" height="300"></canvas>
+                    </div>
+                    <div class="d-flex justify-content-between text-center">
+                        <button class="btn btn-outline-info" onclick="addWater(250)">
+                            <i class="fas fa-plus me-1"></i>250ml
+                        </button>
+                        <button class="btn btn-outline-info" onclick="addWater(500)">
+                            <i class="fas fa-plus me-1"></i>500ml
+                        </button>
+                        <button class="btn btn-outline-info" onclick="addWater(750)">
+                            <i class="fas fa-plus me-1"></i>750ml
+                        </button>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="mt-3 mt-lg-0">
+                        <h5>Daily Progress</h5>
+                        <div id="water-stats">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Today's intake:</span>
+                                <strong id="water-current">0 ml</strong>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Daily goal:</span>
+                                <strong>2500 ml</strong>
+                            </div>
+                            <div class="d-flex justify-content-between mb-3">
+                                <span>Remaining:</span>
+                                <strong id="water-remaining">2500 ml</strong>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <h6>Custom Amount</h6>
+                            <div class="input-group">
+                                <input type="number" class="form-control" id="customWaterAmount" placeholder="Amount in ml" min="1" max="2000">
+                                <button class="btn btn-info" onclick="addCustomWater()">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="alert alert-light">
+                            <small>
+                                <i class="fas fa-lightbulb text-warning me-1"></i>
+                                <strong>Tip:</strong> Spread your water intake throughout the day for better hydration.
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Step Counter Section -->
+<section id="step-counter" class="mb-5">
+    <div class="card">
+        <div class="card-header bg-success text-white">
+            <h4 class="mb-0">
+                <i class="fas fa-walking me-2"></i>Step Counter
+            </h4>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-lg-6">
+                    <div class="text-center mb-4">
+                        <canvas id="stepsChart" width="300" height="300"></canvas>
+                    </div>
+                    <div class="text-center">
+                        <button class="btn btn-success btn-lg" id="stepCounterBtn" onclick="simulateSteps()">
+                            <i class="fas fa-play me-2"></i>Start Step Counter
+                        </button>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="mt-3 mt-lg-0">
+                        <h5>Daily Progress</h5>
+                        <div id="steps-stats">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Today's steps:</span>
+                                <strong id="steps-current">0</strong>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Daily goal:</span>
+                                <strong>10,000</strong>
+                            </div>
+                            <div class="d-flex justify-content-between mb-3">
+                                <span>Remaining:</span>
+                                <strong id="steps-remaining">10,000</strong>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <h6>Manual Entry</h6>
+                            <div class="input-group">
+                                <input type="number" class="form-control" id="customStepsAmount" placeholder="Number of steps" min="1" max="50000">
+                                <button class="btn btn-success" onclick="addCustomSteps()">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="alert alert-light">
+                            <small>
+                                <i class="fas fa-info-circle text-info me-1"></i>
+                                <strong>Note:</strong> This is a demo step counter. In a real app, this would connect to your device's pedometer.
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- AI Assistant Section -->
+<section id="ai-assistant" class="mb-5">
+    <div class="card">
+        <div class="card-header bg-warning text-dark">
+            <h4 class="mb-0">
+                <i class="fas fa-robot me-2"></i>AI-Powered Health Assistant
+            </h4>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-lg-8">
+                    <div class="alert alert-primary">
+                        <h5 class="alert-heading">
+                            <i class="fas fa-magic me-2"></i>Puch AI Integration
+                        </h5>
+                        <p>Connect this app to <strong>Puch AI</strong> for advanced AI-powered health assistance through WhatsApp!</p>
+                        <hr>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <h6><i class="fas fa-cog me-2"></i>MCP Server Setup</h6>
+                                <ul class="list-unstyled small">
+                                    <li><i class="fas fa-check text-success me-1"></i>Bearer token authentication</li>
+                                    <li><i class="fas fa-check text-success me-1"></i>HTTPS requirement met</li>
+                                    <li><i class="fas fa-check text-success me-1"></i>Validation endpoint active</li>
+                                    <li><i class="fas fa-check text-success me-1"></i>Health tools available</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <h6><i class="fas fa-tools me-2"></i>Available Tools</h6>
+                                <ul class="list-unstyled small">
+                                    <li><i class="fas fa-calculator text-primary me-1"></i>BMI Calculator</li>
+                                    <li><i class="fas fa-tint text-info me-1"></i>Water Intake Tracker</li>
+                                    <li><i class="fas fa-walking text-success me-1"></i>Step Counter</li>
+                                    <li><i class="fas fa-heartbeat text-danger me-1"></i>Health Metrics Logger</li>
+                                    <li><i class="fas fa-lightbulb text-warning me-1"></i>Health Tip Generator</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <h6><i class="fas fa-terminal me-2"></i>Connection Command:</h6>
+                            <code class="bg-dark text-light p-2 d-block">/mcp connect https://your-server.com/mcp health-app-token-2024</code>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="card bg-light">
+                        <div class="card-body text-center">
+                            <h5>Daily Health Tip</h5>
+                            <div id="health-tip-content">
+                                <div class="spinner-border text-primary" role="status" style="display: none;">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                <p class="text-muted">Click below to get a personalized health tip!</p>
+                            </div>
+                            <button class="btn btn-warning w-100 mb-2" onclick="generateTip()">
+                                <i class="fas fa-lightbulb me-2"></i>Generate Health Tip
+                            </button>
+                            <button class="btn btn-outline-primary w-100" id="shareTipBtn" onclick="shareHealthTip()" style="display: none;">
+                                <i class="fas fa-share-alt me-2"></i>Share Tip
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Profile Section -->
+<section id="profile" class="mb-5" style="display: none;">
+    <div class="card">
+        <div class="card-header bg-secondary text-white">
+            <h4 class="mb-0">
+                <i class="fas fa-user me-2"></i>User Profile
+            </h4>
+        </div>
+        <div class="card-body">
+            <form id="profileForm">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="profileName" class="form-label">Name</label>
+                        <input type="text" class="form-control" id="profileName" placeholder="Your name">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="profileAge" class="form-label">Age</label>
+                        <input type="number" class="form-control" id="profileAge" placeholder="25" min="1" max="120">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="profileGender" class="form-label">Gender</label>
+                        <select class="form-select" id="profileGender">
+                            <option value="">Select gender</option>
+                            <option value="male">Male</option>
+                            <option value="female">Female</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="profileActivity" class="form-label">Activity Level</label>
+                        <select class="form-select" id="profileActivity">
+                            <option value="low">Low (Sedentary)</option>
+                            <option value="moderate" selected>Moderate (Light exercise)</option>
+                            <option value="high">High (Regular exercise)</option>
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <button type="submit" class="btn btn-secondary">
+                            <i class="fas fa-save me-2"></i>Update Profile
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</section>
+
+<!-- MCP Integration Info Modal -->
+<div class="modal fade" id="mcpInfoModal" tabindex="-1" aria-labelledby="mcpInfoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="mcpInfoModalLabel">
+                    <i class="fas fa-robot me-2"></i>Puch AI MCP Integration Guide
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-info-circle me-2 text-primary"></i>What is MCP?</h6>
+                        <p class="small text-muted">
+                            Model Context Protocol (MCP) is an open standard that enables AI models to connect 
+                            with external data sources and tools. It's like "USB-C for AI applications."
+                        </p>
+                        
+                        <h6><i class="fas fa-whatsapp me-2 text-success"></i>Puch AI Integration</h6>
+                        <p class="small text-muted">
+                            Puch AI is India's first WhatsApp-based AI assistant. By connecting this health app 
+                            via MCP, you can interact with your health data through WhatsApp in 22+ Indian languages.
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-cogs me-2 text-warning"></i>Setup Instructions</h6>
+                        <ol class="small">
+                            <li>Deploy this app to a public HTTPS server</li>
+                            <li>Update the MCP server URL in the connection command</li>
+                            <li>Open Puch AI on WhatsApp</li>
+                            <li>Use the command: <code>/mcp connect [URL] [TOKEN]</code></li>
+                            <li>Start asking health questions in natural language! - Build by Ansh Pandey</li>
+                        </ol>
+                        
+                        <div class="alert alert-info small">
+                            <i class="fas fa-shield-alt me-1"></i>
+                            <strong>Security:</strong> All data is processed securely with Bearer token authentication 
+                            and user phone number validation.
+                        </div>
+                    </div>
+                </div>
+                
+                <hr>
+                
+                <h6><i class="fas fa-comments me-2 text-info"></i>Example Voice Commands</h6>
+                <div class="row g-2">
+                    <div class="col-md-6">
+                        <div class="bg-light p-2 rounded small">
+                            <i class="fas fa-microphone text-primary me-1"></i>
+                            "Calculate my BMI for height 175cm and weight 70kg"
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="bg-light p-2 rounded small">
+                            <i class="fas fa-microphone text-primary me-1"></i>
+                            "Log 500ml water intake"
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="bg-light p-2 rounded small">
+                            <i class="fas fa-microphone text-primary me-1"></i>
+                            "Record 8000 steps for today"
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="bg-light p-2 rounded small">
+                            <i class="fas fa-microphone text-primary me-1"></i>
+                            "Give me a health tip"
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <a href="https://puch.ai/mcp" target="_blank" class="btn btn-primary">
+                    <i class="fas fa-external-link-alt me-2"></i>Learn More
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Initialize charts and UI on page load
+document.addEventListener('DOMContentLoaded', function() {
+    initializeCharts();
+    loadUserData();
+    
+    // Show login modal if no user session
+    const hasSession = sessionStorage.getItem('userLoggedIn');
+    if (!hasSession) {
+        showLogin();
+    }
+});
+
+function showLogin() {
+    const loginModal = new bootstrap.Modal(document.getElementById('loginModal'));
+    loginModal.show();
+}
+
+function showMCPInfo() {
+    const mcpModal = new bootstrap.Modal(document.getElementById('mcpInfoModal'));
+    mcpModal.show();
+}
+
+// Global variables for health tips sharing
+let currentHealthTip = null;
+</script>
+{% endblock %}
