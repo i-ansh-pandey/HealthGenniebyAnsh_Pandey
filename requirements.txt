@@ -1,0 +1,6 @@
+flask
+flask_sqlalchemy
+sqlalchemy
+werkzeug
+gunicorn
+mcp
