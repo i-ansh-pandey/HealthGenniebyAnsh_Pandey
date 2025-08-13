@@ -5,14 +5,6 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import DeclarativeBase
 from werkzeug.middleware.proxy_fix import ProxyFix
 from config import Config
-import math
-import random
-
-# MCP related imports
-try:
-    from mcp.server.fastmcp import FastMCP
-except ImportError:
-    FastMCP = None
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -27,89 +19,57 @@ def create_app():
     app.config.from_object(Config)
     app.secret_key = os.environ.get("SESSION_SECRET", Config.SECRET_KEY)
     app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
-    
+
     db.init_app(app)
 
     with app.app_context():
-        import models  # noqa: F401
+        import models
         db.create_all()
-        
         from routes import main
         app.register_blueprint(main)
 
-    # -------------------------
-    # Health Tools Endpoints
-    # -------------------------
-
-    @app.route('/bmi', methods=['POST'])
-    def bmi_calculator():
-        data = request.json
-        weight = data.get('weight')  # in kg
-        height = data.get('height')  # in cm
-        if not weight or not height:
-            return jsonify({"error": "Weight and height are required"}), 400
-        bmi = weight / ((height / 100) ** 2)
-        category = (
-            "Underweight" if bmi < 18.5 else
-            "Normal weight" if bmi < 24.9 else
-            "Overweight" if bmi < 29.9 else
-            "Obese"
-        )
-        return jsonify({"bmi": round(bmi, 2), "category": category})
-
-    @app.route('/water-intake', methods=['POST'])
-    def water_intake():
-        data = request.json
-        weight = data.get('weight')  # in kg
-        if not weight:
-            return jsonify({"error": "Weight is required"}), 400
-        intake = weight * 35  # ml per kg rule
-        return jsonify({"recommended_water_ml": intake})
-
-    @app.route('/steps', methods=['POST'])
-    def step_counter():
-        data = request.json
-        steps = data.get('steps')
-        if steps is None:
-            return jsonify({"error": "Steps are required"}), 400
-        distance_km = steps * 0.0008  # average step length 0.8m
-        calories_burned = steps * 0.04
-        return jsonify({"steps": steps, "distance_km": round(distance_km, 2), "calories_burned": round(calories_burned, 2)})
-
-    @app.route('/log-metrics', methods=['POST'])
-    def log_metrics():
-        data = request.json
-        logging.info(f"Health metrics logged: {data}")
-        return jsonify({"status": "Metrics logged successfully", "data": data})
-
-    @app.route('/health-tips', methods=['GET'])
-    def health_tips():
-        tips = [
-            "Drink plenty of water throughout the day.",
-            "Get at least 7-8 hours of sleep.",
-            "Exercise for at least 30 minutes daily.",
-            "Eat more fruits and vegetables.",
-            "Take short breaks when working for long hours."
-        ]
-        return jsonify({"tip": random.choice(tips)})
-
-    # AI assistant endpoint (MCP-based if installed)
-    if FastMCP:
-        mcp = FastMCP(name="health-assistant")
-
-        @mcp.tool()
-        def ai_assistant(question: str) -> str:
-            """AI assistant for answering health-related questions."""
-            # You can integrate OpenAI API or other models here
-            return f"I am your health assistant. You asked: {question}"
-
-        @app.route('/ai', methods=['POST'])
-        def ai_route():
+    # ---------- MCP Endpoint for Puch AI ----------
+    @app.route('/mcp', methods=['POST'])
+    def mcp_webhook():
+        try:
             data = request.json
-            question = data.get('question')
-            if not question:
-                return jsonify({"error": "Question is required"}), 400
-            return jsonify({"answer": ai_assistant(question)})
+            command = data.get("command", "").lower()
+            response = "Command not recognized."
+
+            # Example WhatsApp Commands
+            if "bmi" in command:
+                weight = float(data.get("weight", 0))
+                height = float(data.get("height", 0)) / 100  # cm to m
+                bmi = round(weight / (height ** 2), 2) if height > 0 else 0
+                response = f"Your BMI is {bmi}."
+
+            elif "water" in command:
+                weight = float(data.get("weight", 0))
+                intake = round(weight * 35 / 1000, 2)  # liters/day
+                response = f"Recommended water intake: {intake} liters/day."
+
+            elif "steps" in command:
+                steps = int(data.get("steps", 0))
+                response = f"You have walked {steps} steps today!"
+
+            elif "health tips" in command:
+                tips = [
+                    "Drink at least 2 liters of water daily.",
+                    "Take a 5-minute walk every hour.",
+                    "Eat more vegetables and fruits."
+                ]
+                response = tips[0]  # Just giving first tip for now
+
+            return jsonify({"reply": response}), 200
+
+        except Exception as e:
+            logging.error(f"MCP Error: {e}")
+            return jsonify({"error": str(e)}), 500
+
+    # ---------- Validation Endpoint for Puch AI ----------
+    @app.route('/validate', methods=['GET'])
+    def validate():
+        return jsonify({"status": "MCP connected", "app": "HealthGennie"}), 200
 
     return app
 
