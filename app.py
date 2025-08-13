@@ -1,119 +1,79 @@
+import os
+import logging
 from flask import Flask, request, jsonify
-import math
-import random
+from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.orm import DeclarativeBase
+from werkzeug.middleware.proxy_fix import ProxyFix
+from config import Config
 
-app = Flask(__name__)
+# Configure logging
+logging.basicConfig(level=logging.DEBUG)
 
-# ------------------ Existing Features ------------------ #
+class Base(DeclarativeBase):
+    pass
 
-@app.route('/bmi', methods=['POST'])
-def bmi():
-    data = request.get_json()
-    weight = data.get('weight')  # in kg
-    height = data.get('height')  # in meters
-    if not weight or not height:
-        return jsonify({"error": "Please provide weight and height"}), 400
-    bmi_value = weight / (height ** 2)
-    return jsonify({
-        "bmi": round(bmi_value, 2),
-        "category": (
-            "Underweight" if bmi_value < 18.5 else
-            "Normal weight" if bmi_value < 24.9 else
-            "Overweight" if bmi_value < 29.9 else
-            "Obese"
-        )
-    })
+db = SQLAlchemy(model_class=Base)
 
-@app.route('/water-intake', methods=['POST'])
-def water_intake():
-    data = request.get_json()
-    weight = data.get('weight')  # in kg
-    if not weight:
-        return jsonify({"error": "Please provide weight"}), 400
-    water_needed = weight * 35  # ml per kg
-    return jsonify({
-        "water_intake_ml": water_needed,
-        "message": f"Drink at least {water_needed} ml of water daily"
-    })
+def create_app():
+    app = Flask(__name__)
+    app.config.from_object(Config)
+    app.secret_key = os.environ.get("SESSION_SECRET", Config.SECRET_KEY)
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
-@app.route('/steps', methods=['POST'])
-def steps():
-    data = request.get_json()
-    steps_count = data.get('steps')
-    if not steps_count:
-        return jsonify({"error": "Please provide steps count"}), 400
-    km_walked = steps_count * 0.0008
-    return jsonify({
-        "steps": steps_count,
-        "distance_km": round(km_walked, 2)
-    })
+    db.init_app(app)
 
-@app.route('/health-tips', methods=['GET'])
-def health_tips():
-    tips = [
-        "Drink plenty of water.",
-        "Get at least 7-8 hours of sleep.",
-        "Eat more fruits and vegetables.",
-        "Exercise for at least 30 minutes daily.",
-        "Take short breaks during work to stretch."
-    ]
-    return jsonify({"tip": random.choice(tips)})
+    with app.app_context():
+        import models
+        db.create_all()
+        from routes import main
+        app.register_blueprint(main)
 
-@app.route('/log-health', methods=['POST'])
-def log_health():
-    data = request.get_json()
-    return jsonify({"status": "Health data logged", "data": data})
+    # ---------- MCP Endpoint for Puch AI ----------
+    @app.route('/mcp', methods=['POST'])
+    def mcp_webhook():
+        try:
+            data = request.json
+            command = data.get("command", "").lower()
+            response = "Command not recognized."
 
-@app.route('/ai-assistant', methods=['POST'])
-def ai_assistant():
-    data = request.get_json()
-    user_query = data.get("query", "")
-    return jsonify({"response": f"AI Assistant Response to: {user_query}"})
+            # Example WhatsApp Commands
+            if "bmi" in command:
+                weight = float(data.get("weight", 0))
+                height = float(data.get("height", 0)) / 100  # cm to m
+                bmi = round(weight / (height ** 2), 2) if height > 0 else 0
+                response = f"Your BMI is {bmi}."
 
+            elif "water" in command:
+                weight = float(data.get("weight", 0))
+                intake = round(weight * 35 / 1000, 2)  # liters/day
+                response = f"Recommended water intake: {intake} liters/day."
 
-# ------------------ MCP Integration ------------------ #
+            elif "steps" in command:
+                steps = int(data.get("steps", 0))
+                response = f"You have walked {steps} steps today!"
 
-@app.route('/validate', methods=['GET'])
-def validate():
-    return jsonify({"app": "HealthGennie", "status": "MCP connected"})
+            elif "health tips" in command:
+                tips = [
+                    "Drink at least 2 liters of water daily.",
+                    "Take a 5-minute walk every hour.",
+                    "Eat more vegetables and fruits."
+                ]
+                response = tips[0]  # Just giving first tip for now
 
-@app.route('/mcp', methods=['GET', 'POST'])
-def mcp():
-    if request.method == 'GET':
-        return jsonify({"message": "MCP endpoint ready. Send POST requests here."})
-    
-    try:
-        data = request.get_json()
-        if not data:
-            return jsonify({"error": "No JSON data received"}), 400
-        
-        user_message = data.get("message", "").lower()
+            return jsonify({"reply": response}), 200
 
-        # Simple command routing for WhatsApp/Puch.ai
-        if "bmi" in user_message:
-            return jsonify({"command": "bmi", "usage": "Send weight(kg) and height(m) in POST to /bmi"})
-        elif "water" in user_message:
-            return jsonify({"command": "water-intake", "usage": "Send weight(kg) in POST to /water-intake"})
-        elif "steps" in user_message:
-            return jsonify({"command": "steps", "usage": "Send steps count in POST to /steps"})
-        elif "tip" in user_message:
-            return jsonify({"command": "health-tips", "tip": random.choice([
-                "Drink plenty of water.",
-                "Get at least 7-8 hours of sleep.",
-                "Eat more fruits and vegetables.",
-                "Exercise for at least 30 minutes daily.",
-                "Take short breaks during work to stretch."
-            ])})
-        elif "log" in user_message:
-            return jsonify({"command": "log-health", "usage": "Send health data in POST to /log-health"})
-        elif "ai" in user_message:
-            return jsonify({"command": "ai-assistant", "usage": "Send a query in POST to /ai-assistant"})
-        else:
-            return jsonify({"message": "Unknown command. Try: bmi, water, steps, tip, log, ai"})
-        
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        except Exception as e:
+            logging.error(f"MCP Error: {e}")
+            return jsonify({"error": str(e)}), 500
 
+    # ---------- Validation Endpoint for Puch AI ----------
+    @app.route('/validate', methods=['GET'])
+    def validate():
+        return jsonify({"status": "MCP connected", "app": "HealthGennie"}), 200
+
+    return app
+
+app = create_app()
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)
